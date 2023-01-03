@@ -1,7 +1,12 @@
 package study.querydsl;
 
+import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.ExpressionUtils;
+import com.querydsl.core.types.Predicate;
+import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
@@ -11,6 +16,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
+import study.querydsl.dto.MemberDto;
+import study.querydsl.dto.QMemberDto;
+import study.querydsl.dto.UserDto;
 import study.querydsl.entity.Member;
 import study.querydsl.entity.QMember;
 import study.querydsl.entity.QTeam;
@@ -59,6 +67,9 @@ public class QuerydslBasicTest {
         em.clear();
     }
 
+    /**
+     * Querydsl vs JPQL
+     */
     @Test
     public void startJPQL() throws Exception {
         // member1을 찾아라
@@ -81,7 +92,11 @@ public class QuerydslBasicTest {
         assertThat(findMember.getUsername()).isEqualTo("member1");
     }
 
-    @Test
+
+    /**
+     * 검색 조건 쿼리
+     */
+    @Test  // 기본 검색 쿼리
     public void search() throws Exception {
         Member findMember = query
                 .selectFrom(member)
@@ -92,7 +107,7 @@ public class QuerydslBasicTest {
         assertThat(findMember.getUsername()).isEqualTo("member1");
     }
 
-    @Test
+    @Test  // and 조건을 파라미터로 처리
     public void searchAndParam() throws Exception {
         Member findMember = query
                 .selectFrom(member)
@@ -104,6 +119,10 @@ public class QuerydslBasicTest {
         assertThat(findMember.getUsername()).isEqualTo("member1");
     }
 
+
+    /**
+     * 결과 조회
+     */
     @Test
     public void resultFetch() throws Exception {
         List<Member> fetch = query
@@ -130,13 +149,16 @@ public class QuerydslBasicTest {
     }
 
     /**
-     * 회원 정렬 순서
-     * 1. 회원 나이 내림차순(desc)
-     * 2. 회원 이름 오름차순(asc)
-     * 단, 2에서 회원 이름이 없으면 마지막에 출력(nulls last)
+     * 정렬
      */
     @Test
     public void sort() throws Exception {
+        /*
+         * 회원 정렬 순서
+         * 1. 회원 나이 내림차순(desc)
+         * 2. 회원 이름 오름차순(asc)
+         * 단, 2에서 회원 이름이 없으면 마지막에 출력(nulls last)
+         */
         em.persist(new Member(null, 100));
         em.persist(new Member("member5", 100));
         em.persist(new Member("member6", 100));
@@ -155,6 +177,7 @@ public class QuerydslBasicTest {
         assertThat(member6.getUsername()).isEqualTo("member6");
         assertThat(memberNull.getUsername()).isNull();
     }
+
 
     /**
      * 페이징
@@ -185,6 +208,7 @@ public class QuerydslBasicTest {
         assertThat(queryResults.getOffset()).isEqualTo(1);
         assertThat(queryResults.getResults().size()).isEqualTo(2);
     }
+
 
     /**
      * 집합
@@ -227,6 +251,7 @@ public class QuerydslBasicTest {
         assertThat(teamB.get(member.age.avg())).isEqualTo(35);
     }
 
+
     /**
      * join - 기본 join
      */
@@ -260,15 +285,16 @@ public class QuerydslBasicTest {
                 .containsExactly("teamA", "teamB");
     }
 
+
     /**
      * join - on절
      */
-    /*
-     * 회원과 팀을 조인하면서, 팀 이름이 teamA인 팀만 조인, 회원은 모두 조회
-     * JPQL: select m, t from Member m left join m.team t on t.name = "teamA"
-     */
     @Test
     public void join_on_filtering() throws Exception {
+        /*
+         * 회원과 팀을 조인하면서, 팀 이름이 teamA인 팀만 조인, 회원은 모두 조회
+         * JPQL: select m, t from Member m left join m.team t on t.name = "teamA"
+         */
         List<Tuple> result = query
                 .select(member, team)
                 .from(member)
@@ -280,12 +306,12 @@ public class QuerydslBasicTest {
         }
     }
 
-    /*
-     * 연관 관계 없는 엔티티 외부 조인
-     * 회원의 이름과 팀의 이름이 같은 대상 외부 조인
-     */
     @Test
     public void join_on_no_relation() throws Exception {
+        /*
+         * 연관 관계 없는 엔티티 외부 조인
+         * 회원의 이름과 팀의 이름이 같은 대상 외부 조인
+         */
         em.persist(new Member("teamA"));
         em.persist(new Member("teamB"));
         em.persist(new Member("teamC"));
@@ -300,6 +326,7 @@ public class QuerydslBasicTest {
             System.out.println("tuple = " + tuple);
         }
     }
+
 
     /**
      * join - fetch join
@@ -335,6 +362,7 @@ public class QuerydslBasicTest {
         boolean loaded = emf.getPersistenceUnitUtil().isLoaded(findMember.getTeam());
         assertThat(loaded).as("fetch join 적용").isTrue();
     }
+
 
     /**
      * 서브 쿼리
@@ -400,6 +428,7 @@ public class QuerydslBasicTest {
         }
     }
 
+
     /**
      * Case 문
      */
@@ -454,6 +483,7 @@ public class QuerydslBasicTest {
         }
     }
 
+
     /**
      * 상수, 문자 더하기
      */
@@ -476,6 +506,259 @@ public class QuerydslBasicTest {
                 .select(member.username.concat("_").concat(member.age.stringValue()))
                 .from(member)
                 .where(member.username.eq("member1"))
+                .fetch();
+
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
+    }
+
+
+    /**
+     * 프로젝션과 결과 반환 - 기본
+     */
+    @Test  // 프로젝션 대상이 하나
+    public void simpleProjection() throws Exception {
+        List<String> result = query
+                .select(member.username)
+                .from(member)
+                .fetch();
+
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
+    }
+
+    @Test  // tuple 조회 (projection 대상이 둘 이상일 때)
+    public void tupleProjection() throws Exception {
+        List<Tuple> result = query
+                .select(member.username, member.age)
+                .from(member)
+                .fetch();
+
+        for (Tuple tuple : result) {
+            String username = tuple.get(member.username);
+            Integer age = tuple.get(member.age);
+            System.out.println("username = " + username);
+            System.out.println("age = " + age);
+        }
+    }
+
+
+    /**
+     * 프로젝션과 결과 반환 - DTO 조회
+     */
+    @Test  // 순수 JPA에서 DTO 조회
+    public void findDtoByJPQL() throws Exception {
+        List<MemberDto> result = em.createQuery("select new study.querydsl.dto.MemberDto(m.username, m.age) from Member m", MemberDto.class)
+                .getResultList();
+
+        for (MemberDto memberDto : result) {
+            System.out.println("memberDto = " + memberDto);
+        }
+    }
+
+    @Test  // 1. property 접근 - Setter
+    public void findDtoBySetter() throws Exception {
+        List<MemberDto> result = query
+                .select(Projections.bean(MemberDto.class,
+                        member.username,
+                        member.age))
+                .from(member)
+                .fetch();
+
+        for (MemberDto memberDto : result) {
+            System.out.println("memberDto = " + memberDto);
+        }
+    }
+
+    @Test  // 2.1. field 직접 접근 (Getter, Setter 없어도 됨)
+    public void findDtoByField() throws Exception {
+        List<MemberDto> result = query
+                .select(Projections.fields(MemberDto.class,
+                        member.username,
+                        member.age))
+                .from(member)
+                .fetch();
+
+        for (MemberDto memberDto : result) {
+            System.out.println("memberDto = " + memberDto);
+        }
+    }
+
+    @Test  // 2.2. field 직접 접근 - 별칭이 다를 때
+    public void findUserDto() throws Exception {
+        QMember memberSub = new QMember("memberSub");
+
+        List<UserDto> result = query
+                .select(Projections.fields(UserDto.class,
+                        member.username.as("name"),
+
+                        ExpressionUtils.as(JPAExpressions
+                                .select(memberSub.age.max())
+                                .from(memberSub), "age")
+                ))
+                .from(member)
+                .fetch();
+
+        for (UserDto userDto : result) {
+            System.out.println("userDto = " + userDto);
+        }
+    }
+
+    @Test  // 3. 생성자 사용
+    public void findDtoByConstructor() throws Exception {
+        List<MemberDto> result = query
+                .select(Projections.constructor(MemberDto.class,
+                        member.username,
+                        member.age))
+                .from(member)
+                .fetch();
+
+        for (MemberDto memberDto : result) {
+            System.out.println("memberDto = " + memberDto);
+        }
+    }
+
+
+    /**
+     * 프로젝션과 결과 반환 - @QueryProjection
+     */
+    @Test
+    public void findDtoByQueryProjection() throws Exception {
+        // findDtoByConstructor와 다르게 컴파일 오류로 오류를 잡을 수 있음
+        List<MemberDto> result = query
+                .select(new QMemberDto(member.username, member.age))
+                .from(member)
+                .fetch();
+
+        for (MemberDto memberDto : result) {
+            System.out.println("memberDto = " + memberDto);
+        }
+    }
+
+
+    /**
+     * 동적 쿼리 - BooleanBuilder 사용
+     */
+    @Test
+    public void dynamicQuery_BooleanBuilder() throws Exception {
+        String usernameParam = "member1";
+        Integer ageParam = null;
+
+        List<Member> result = searchMember1(usernameParam, ageParam);
+        assertThat(result.size()).isEqualTo(1);
+    }
+    private List<Member> searchMember1(String usernameCond, Integer ageCond) {
+        BooleanBuilder builder = new BooleanBuilder();
+
+        if (usernameCond != null) {
+            builder.and(member.username.eq(usernameCond));
+        }
+        if (ageCond != null) {
+            builder.and(member.age.eq(ageCond));
+        }
+
+        return query
+                .selectFrom(member)
+                .where(builder)
+                .fetch();
+    }
+
+
+    /**
+     * 동적 쿼리 - Where 다중 파라미터 사용
+     */
+    @Test
+    public void dynamicQuery_WhereParam() throws Exception {
+        String usernameParam = "member1";
+        Integer ageParam = null;
+
+        List<Member> result = searchMember2(usernameParam, ageParam);
+        assertThat(result.size()).isEqualTo(1);
+    }
+    private List<Member> searchMember2(String usernameCond, Integer ageCond) {
+        return query
+                .selectFrom(member)
+                .where(usernameEq(usernameCond), ageEq(ageCond))
+//                .where(allEq(usernameCond, ageCond))
+                .fetch();
+    }
+    private BooleanExpression usernameEq(String usernameCond) {
+        return usernameCond != null ? member.username.eq(usernameCond) : null;
+    }
+    private BooleanExpression ageEq(Integer ageCond) {
+        return ageCond != null ? member.age.eq(ageCond) : null;
+    }
+    private BooleanExpression allEq(String usernameCond, Integer ageCond) {
+        return usernameEq(usernameCond).and(ageEq(ageCond));
+    }
+
+
+    /**
+     * 수정, 삭제 벌크 연산
+     */
+    @Test  // 쿼리 한 번으로 대량 데이터 수정
+    public void bulkUpdate() throws Exception {
+        long count = query  // 영향 받은 row 수
+                .update(member)
+                .set(member.username, "비회원")
+                .where(member.age.lt(28))
+                .execute();
+
+        em.flush();
+        em.clear();
+
+        List<Member> result = query
+                .selectFrom(member)
+                .fetch();
+
+        for (Member member : result) {
+            System.out.println("member = " + member);
+        }
+    }
+    
+    @Test  // 기존 숫자에 1 더하기
+    public void bulkAdd() throws Exception {
+        long count = query
+                .update(member)
+                .set(member.age, member.age.add(1))  // 곱하기: multiply(x)
+                .execute();
+    }
+
+    @Test  // 쿼리 한 번으로 대량 데이터 삭제
+    public void bulkDelete() throws Exception {
+        long count = query
+                .delete(member)
+                .where(member.age.gt(18))
+                .execute();
+    }
+
+
+    /**
+     * SQL function 호출하기
+     */
+    @Test  // member -> M 으로 변경하는 replace 함수 사용
+    public void sqlFunction() throws Exception {
+        List<String> result = query
+                .select(Expressions.stringTemplate(
+                        "function('regexp_replace', {0}, {1}, {2})",
+                        member.username, "member", "M"))
+                .from(member)
+                .fetch();
+
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
+    }
+    
+    @Test  // 소문자로 변경, 간단한 함수들은 ansi 표준으로 Querydsl이 내장
+    public void sqlFunction2() throws Exception {
+        List<String> result = query
+                .select(member.username)
+                .from(member)
+//                .where(member.username.eq(Expressions.stringTemplate("function('lower', {0})", member.username)))
+                .where(member.username.eq(member.username.lower()))
                 .fetch();
 
         for (String s : result) {
