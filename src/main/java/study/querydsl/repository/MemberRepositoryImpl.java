@@ -20,7 +20,7 @@ import static org.springframework.util.StringUtils.hasText;
 import static study.querydsl.entity.QMember.member;
 import static study.querydsl.entity.QTeam.team;
 
-public class  MemberRepositoryImpl implements MemberRepositoryCustom {
+public class MemberRepositoryImpl implements MemberRepositoryCustom {
 
     private final JPAQueryFactory queryFactory;
 
@@ -104,6 +104,7 @@ public class  MemberRepositoryImpl implements MemberRepositoryCustom {
 
         return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchCount);
     }
+
 
     private BooleanExpression usernameEq(String username) {
         return hasText(username) ? member.username.eq(username) : null;
