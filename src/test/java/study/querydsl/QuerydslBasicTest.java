@@ -62,9 +62,6 @@ public class QuerydslBasicTest {
         em.persist(member2);
         em.persist(member3);
         em.persist(member4);
-
-        em.flush();
-        em.clear();
     }
 
     /**
